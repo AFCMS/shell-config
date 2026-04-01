@@ -1,0 +1,58 @@
+---
+name: CI
+
+on:
+  push:
+    branches: [master]
+    tags:
+      - "*"
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.7.x
+          cache: true
+
+      - name: Check
+        run: deno check
+
+      - name: Lint
+        run: deno lint
+
+      - name: Format
+        run: deno fmt --check
+
+      - name: Test
+        run: deno test
+
+      - name: Build the project
+        run: deno task "build:*"
+
+      - name: Upload build artifacts for Linux x64
+        uses: actions/upload-artifact@v7
+        with:
+          name: shell-config-linux-x64
+          path: build/shell-config-linux-x64
+
+      - name: Upload build artifacts for Linux arm64
+        uses: actions/upload-artifact@v7
+        with:
+          name: shell-config-linux-arm64
+          path: build/shell-config-linux-arm64
+
+      - name: Upload build artifacts for Windows x64
+        uses: actions/upload-artifact@v7
+        with:
+          name: shell-config-windows-x64
+          path: build/shell-config-windows-x64.exe
