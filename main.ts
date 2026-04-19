@@ -1,4 +1,15 @@
 import {
+  box,
+  confirm,
+  intro,
+  isCancel,
+  log,
+  outro,
+  spinner,
+  taskLog,
+} from "@clack/prompts";
+
+import {
   fetchTextFile,
   omzInstallScriptUrl,
 } from "./src/linux/download_script.ts";
@@ -16,16 +27,39 @@ import {
 import { detectSystem } from "./src/system_detection.ts";
 
 if (import.meta.main) {
+  intro("AFCM - Shell Configuration");
+
+  // Step 1. Detect system information
+  const spin1 = spinner();
+  spin1.start("Detecting system information...");
+
   const systemInfos = await detectSystem();
-  console.log(systemInfos);
+
+  spin1.clear();
+
+  if (!systemInfos) {
+    outro("Unsupported system detected. Exiting...");
+    Deno.exit(1);
+  }
+
+  box(JSON.stringify(systemInfos, undefined, 2), "System Informations", {
+    contentAlign: "left",
+    titleAlign: "center",
+    width: "auto",
+    rounded: true,
+  });
+
+  const isValid = await confirm({
+    message: "It it OK?",
+  });
+
+  if (!isValid || isCancel(isValid)) {
+    outro("Aborting...");
+    Deno.exit(1);
+  }
 
   const test = await import("./test.json", { with: { type: "json" } });
   console.log(test);
-
-  if (!systemInfos) {
-    console.error("Unsupported system");
-    Deno.exit(1);
-  }
 
   if (systemInfos.os === "linux") {
     console.log(
@@ -36,22 +70,58 @@ if (import.meta.main) {
     Deno.exit(1);
   }
 
+  // Step 2. Update package lists
+
+  const log2 = taskLog({
+    title: "Updating package lists...",
+    limit: 10,
+    retainLog: false,
+  });
+  // TODO: proper taskLog integration
   if (systemInfos.packageManager === "deb") {
     await updateDebPackagesList();
   }
 
-  // Install required packages for the program to work
+  log2.success("Update complete");
 
+  // Step 3. Install required packages for the program to work
+
+  const log3 = taskLog({
+    title: "3. Installing required packages...",
+    limit: 10,
+    retainLog: false,
+  });
+  // TODO: proper taskLog integration
   await installPackages(["which", "git"], systemInfos.packageManager);
 
-  // Install zsh
-  const checkZsh = await checkExec("zsh");
-  console.log(`Zsh is ${checkZsh ? "already installed" : "not installed"}.`);
-  if (!checkZsh) {
-    const success = await installPackages(["zsh"], systemInfos.packageManager);
-    if (!success) {
-      console.error("Failed to install zsh");
-      Deno.exit(1);
+  log3.success("Update complete");
+
+  // Step 4. Shell configuration
+
+  if (systemInfos.os === "linux") {
+    // Install zsh
+    const checkZsh = await checkExec("zsh");
+
+    if (checkZsh) {
+      log.success(`${checkZsh.version} is already installed`);
+    } else {
+      const logZsh = taskLog({
+        title: "Installing Zsh...",
+        limit: 10,
+        retainLog: false,
+      });
+
+      const success = await installPackages(
+        ["zsh"],
+        systemInfos.packageManager,
+      );
+
+      if (success) {
+        logZsh.success("Zsh installation complete");
+      } else {
+        outro("Failed to install zsh");
+        Deno.exit(1);
+      }
     }
   }
 
@@ -67,14 +137,14 @@ if (import.meta.main) {
     // Prepare environment variables for the OMZ install script
     // This ensures it installs to the correct user's home directory
     // even when running with sudo
-    const omzEnv: Record<string, string> = {
+    const omzEnv = {
       HOME: systemInfos.homeDir,
       USER: systemInfos.user,
       ZSH: `${systemInfos.homeDir}/.oh-my-zsh`,
       CHSH: "no", // Don't change default shell when running via sudo
       RUNZSH: "no", // Don't run zsh after install
       KEEP_ZSHRC: "yes", // Keep existing .zshrc if it exists
-    };
+    } as const satisfies Record<string, string>;
     try {
       await runInlineScript(script, omzEnv);
     } catch (err) {
@@ -94,4 +164,6 @@ if (import.meta.main) {
   } else {
     console.warn("OMZ not found, skipping plugin installation...");
   }
+
+  outro(`You're all set!`);
 }
