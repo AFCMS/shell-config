@@ -36,5 +36,11 @@
     "editor.tabSize": 2,
     "editor.defaultFormatter": "denoland.vscode-deno"
   },
+  "[powershell]": {
+    "debug.saveBeforeStart": "nonUntitledEditorsInActiveGroup",
+    "editor.semanticHighlighting.enabled": false,
+    "editor.wordSeparators": "`~!@#$%^&*()=+[{]}\\|;:'\",.<>/?",
+    "editor.defaultFormatter": "ms-vscode.powershell"
+  },
   "deno.enable": true
 }

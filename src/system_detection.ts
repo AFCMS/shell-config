@@ -1,39 +1,71 @@
-import { SystemInfo } from "./system.ts";
+import { getOsRelease } from "./os-release.ts";
+import { Architecture, SystemInfo } from "./system.ts";
 
 export async function detectSystem(): Promise<SystemInfo | null> {
-  if (Deno.build.os === "linux") {
-    const debPath = "/etc/debian_version";
-    const rpmPath = "/etc/redhat-release";
+  const arch = Deno.build.arch;
+  if (arch !== "x86_64" && arch !== "aarch64") {
+    return null;
+  }
 
+  const systemArch: Architecture = arch;
+
+  if (Deno.build.os === "linux") {
     let homeDir = Deno.env.get("HOME");
     let user = Deno.env.get("USER");
     const sudoUser = Deno.env.get("SUDO_USER");
 
-    // If running under sudo, use the original user's credentials
+    // If running under sudo, use the original user's credentials.
     if (sudoUser) {
       user = sudoUser;
       homeDir = `/home/${sudoUser}`;
     }
 
-    if (await Deno.readTextFile(debPath).catch(() => null)) {
+    const osRelease = await getOsRelease();
+    if (!osRelease?.ID) {
+      return null;
+    }
+
+    if (osRelease.ID === "ubuntu") {
+      const versionCodename = osRelease.VERSION_CODENAME ??
+        osRelease.UBUNTU_CODENAME;
+      if (!versionCodename) {
+        return null;
+      }
+
       return {
-        os: Deno.build.os,
+        os: "linux",
+        distro: "ubuntu",
         packageManager: "deb",
-        arch: Deno.build.arch,
+        versionCodename,
+        arch: systemArch,
         homeDir: homeDir ?? "",
         user: user ?? "",
       };
     }
 
-    if (await Deno.readTextFile(rpmPath).catch(() => null)) {
+    if (osRelease.ID === "fedora") {
+      const versionId = Number.parseInt(osRelease.VERSION_ID ?? "", 10);
+      if (Number.isNaN(versionId)) {
+        return null;
+      }
+
       return {
-        os: Deno.build.os,
+        os: "linux",
+        distro: "fedora",
         packageManager: "rpm",
-        arch: Deno.build.arch,
+        versionId,
+        arch: systemArch,
         homeDir: homeDir ?? "",
         user: user ?? "",
       };
     }
+  } else if (Deno.build.os === "windows") {
+    return {
+      os: Deno.build.os,
+      arch: systemArch,
+      homeDir: Deno.env.get("USERPROFILE") ?? "",
+      user: Deno.env.get("USERNAME") ?? "",
+    };
   }
 
   return null;

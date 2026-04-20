@@ -25,6 +25,7 @@ import {
   updateDebPackagesList,
 } from "./src/linux/utils/install_package.ts";
 import { detectSystem } from "./src/system_detection.ts";
+import { installStarshipConfig } from "./src/modules/starship.ts";
 
 if (import.meta.main) {
   intro("AFCM - Shell Configuration");
@@ -164,6 +165,8 @@ if (import.meta.main) {
   } else {
     console.warn("OMZ not found, skipping plugin installation...");
   }
+
+  await installStarshipConfig(systemInfos);
 
   outro(`You're all set!`);
 }

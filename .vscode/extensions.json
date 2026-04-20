@@ -1,6 +1,8 @@
 {
   "recommendations": [
     "denoland.vscode-deno",
-    "tamasfe.even-better-toml"
+    "tamasfe.even-better-toml",
+    "ms-vscode.powershell",
+    "github.vscode-github-actions"
   ]
 }
