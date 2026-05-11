@@ -27,6 +27,10 @@ export const packageMappings = {
     deb: "util-linux",
     rpm: "util-linux",
   },
+  fastfetch: {
+    deb: "fastfetch",
+    rpm: "fastfetch",
+  },
 } as const satisfies PackageMapping;
 
 export type PackageName = keyof typeof packageMappings;
