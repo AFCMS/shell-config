@@ -57,3 +57,24 @@ export async function installPackages(
       return await installRpmPackages(packageNames);
   }
 }
+
+export async function installWingetPackages(
+  packageNames: string[],
+) {
+  const wingetCommand = new Deno.Command("winget", {
+    args: [
+      "install",
+      "--id",
+      ...packageNames,
+      "--accept-package-agreements",
+      "--accept-source-agreements",
+      "--disable-interactivity",
+    ],
+    stdin: "null",
+    stderr: "inherit",
+    stdout: "inherit",
+  });
+
+  const output = await wingetCommand.output();
+  return output.success;
+}
