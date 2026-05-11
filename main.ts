@@ -26,6 +26,7 @@ import {
 } from "./src/linux/utils/install_package.ts";
 import { detectSystem } from "./src/system_detection.ts";
 import { installStarshipConfig } from "./src/modules/starship.ts";
+import { installZshConfig } from "./src/modules/zsh.ts";
 
 if (import.meta.main) {
   intro("AFCM - Shell Configuration");
@@ -167,6 +168,8 @@ if (import.meta.main) {
   }
 
   await installStarshipConfig(systemInfos);
+
+  await installZshConfig(systemInfos);
 
   outro(`You're all set!`);
 }
