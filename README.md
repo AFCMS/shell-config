@@ -1,10 +1,13 @@
 # AFCMS - Shell Config
 
-| OS             |
-| -------------- |
-| Ubuntu 26.04   |
-| Fedora 44      |
-| Windows 11 Pro |
+[win-sudo]: https://github.com/microsoft/sudo
+[winget]: https://learn.microsoft.com/en-us/windows/package-manager
+
+| OS                                                              |
+| --------------------------------------------------------------- |
+| Ubuntu 26.04                                                    |
+| Fedora 44                                                       |
+| Windows 11 Pro (with [`sudo`][win-sudo] and [`winget`][winget]) |
 
 - ZSH
 - Oh-My-ZSH
