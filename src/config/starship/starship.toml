@@ -1,4 +1,6 @@
 "$schema" = 'https://starship.rs/config-schema.json'
+
+# Inspired by https://starship.rs/presets/tokyo-night
  
 ### VSCODE ###
 # To enable the starship prompt in vscode, add the following to your settings.json:
