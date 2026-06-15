@@ -26,5 +26,8 @@
       "net": ["raw.githubusercontent.com", "starship.rs"]
     }
   },
-  "unstable": ["raw-imports"]
+  "unstable": ["raw-imports"],
+  "fmt": {
+    "exclude": ["**/*.svg"]
+  }
 }
