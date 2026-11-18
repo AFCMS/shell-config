@@ -1,11 +1,12 @@
+import { readFile } from "node:fs/promises";
+
 // https://www.freedesktop.org/software/systemd/man/latest/os-release.html
 
 const osReleaseFilePath = "/etc/os-release";
 
 export async function getOsReleaseRaw(): Promise<string | undefined> {
   try {
-    const response = await Deno.readFile(osReleaseFilePath);
-    return new TextDecoder().decode(response);
+    return await readFile(osReleaseFilePath, "utf8");
   } catch {
     return undefined;
   }

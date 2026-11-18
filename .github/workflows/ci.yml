@@ -1,58 +1,415 @@
 ---
 name: CI
-
 on:
   push:
-    branches: [master]
+    branches:
+      - master
     tags:
-      - "*"
+      - "v*"
   pull_request:
-    branches: [master]
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+env:
+  HUSKY: "0"
 
 jobs:
-  build:
-    name: Build and Test
+  checks:
+    name: Source checks
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Deno
-        uses: denoland/setup-deno@v2
+      - name: Checkout Repository
+        uses: actions/checkout@v7.0.1
         with:
-          deno-version: v2.7.x
-          cache: true
+          persist-credentials: false
 
-      - name: Check
-        run: deno check
+      - name: Setup PNPM
+        uses: pnpm/setup@v3.2.0
+        with:
+          install: true
+          require-lockfile: true
+
+      - name: Type Check
+        run: pnpm typecheck
+
+      - name: Tests
+        run: pnpm test
 
       - name: Lint
-        run: deno lint
+        run: pnpm lint
 
       - name: Format
-        run: deno fmt --check
+        run: pnpm format:check
 
-      - name: Test
-        run: deno test
-
-      - name: Build the project
-        run: deno task "build:*"
-
-      - name: Upload build artifacts for Linux x64
-        uses: actions/upload-artifact@v7
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      tarball: ${{ steps.metadata.outputs.tarball }}
+      registry-tag: ${{ steps.metadata.outputs.registry-tag }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7.0.1
         with:
-          name: shell-config-linux-x64
-          path: build/shell-config-linux-x64
+          persist-credentials: false
 
-      - name: Upload build artifacts for Linux arm64
-        uses: actions/upload-artifact@v7
+      - name: Setup PNPM
+        uses: pnpm/setup@v3.2.0
         with:
-          name: shell-config-linux-arm64
-          path: build/shell-config-linux-arm64
+          install: true
+          require-lockfile: true
 
-      - name: Upload build artifacts for Windows x64
-        uses: actions/upload-artifact@v7
+      - name: Build npm tarball and SEA executables
+        run: pnpm build
+
+      - name: Record package metadata
+        id: metadata
+        shell: bash
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          registry_tag=latest
+          if [[ "$version" == *-* ]]; then registry_tag=next; fi
+          printf 'version=%s\ntarball=afcms-shell-config-%s.tgz\nregistry-tag=%s\n' \
+            "$version" "$version" "$registry_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Upload npm tarball
+        uses: actions/upload-artifact@v7.0.2
         with:
-          name: shell-config-windows-x64
-          path: build/shell-config-windows-x64.exe
+          archive: false
+          path: build/npm/${{ steps.metadata.outputs.tarball }}
+          if-no-files-found: error
+
+      - name: Upload Linux x64 executable
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          archive: false
+          path: build/sea/shell-config-linux-x64
+          if-no-files-found: error
+
+      - name: Upload Linux ARM64 executable
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          archive: false
+          path: build/sea/shell-config-linux-arm64
+          if-no-files-found: error
+
+      - name: Upload Windows x64 executable
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          archive: false
+          path: build/sea/shell-config-win-x64.exe
+          if-no-files-found: error
+
+  smoke-linux:
+    name: Installer (${{ matrix.name }})
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.image }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu 26.04 x64
+            image: ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
+            runner: ubuntu-latest
+            binary: shell-config-linux-x64
+          - name: Fedora 44 x64
+            image: fedora:44@sha256:15da97ed9aa94dd3d92c3925eb89520f6c80e07ea7ee24cba848d1f8b6912b3e
+            runner: ubuntu-latest
+            binary: shell-config-linux-x64
+          - name: Ubuntu 26.04 ARM64
+            image: ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
+            runner: ubuntu-26.04-arm
+            binary: shell-config-linux-arm64
+    steps:
+      - name: Install runner prerequisites
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update
+            apt-get install -y --no-install-recommends ca-certificates libatomic1 libstdc++6 xz-utils
+          else
+            dnf install -y ca-certificates libatomic libstdc++ tar xz
+          fi
+
+      - name: Checkout Repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PNPM
+        uses: pnpm/setup@v3.2.0
+        with:
+          install: false
+
+      - name: Download executable
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: ${{ matrix.binary }}
+          path: build
+
+      - name: Run unattended installer
+        env:
+          BINARY: ${{ matrix.binary }}
+        run: node scripts/smoke.ts "build/$BINARY"
+
+  smoke-windows:
+    name: Installer (Windows Server)
+    needs: build
+    runs-on: windows-2025
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PNPM
+        uses: pnpm/setup@v3.2.0
+        with:
+          install: false
+
+      - name: Download executable
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: shell-config-win-x64.exe
+          path: build
+
+      - name: Run unattended installer
+        run: node scripts/smoke.ts build/shell-config-win-x64.exe
+
+  smoke-npm:
+    name: Installer (npm tarball)
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PNPM
+        uses: pnpm/setup@v3.2.0
+        with:
+          install: false
+
+      - name: Download npm tarball
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: ${{ needs.build.outputs.tarball }}
+          path: build/npm
+
+      - name: Install and run the packed CLI
+        env:
+          TARBALL: ${{ needs.build.outputs.tarball }}
+        run: |
+          installed=$(mktemp -d)
+          trap 'rm -rf "$installed"' EXIT
+          tar -xf "build/npm/$TARBALL" -C "$installed"
+          package="$installed/package"
+          cp pnpm-lock.yaml pnpm-workspace.yaml "$package/"
+          pnpm --dir "$package" install --prod --frozen-lockfile --ignore-scripts --no-runtime
+          entry=$(node -p 'require(process.argv[1]).bin["shell-config"]' "$package/package.json")
+          node scripts/smoke.ts "$package/$entry"
+
+  feature-tests:
+    name: Dev Container Feature (${{ matrix.name }})
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Debian 13
+            image: debian:13@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6
+          - name: Ubuntu 26.04
+            image: ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
+          - name: Fedora 44
+            image: fedora:44@sha256:15da97ed9aa94dd3d92c3925eb89520f6c80e07ea7ee24cba848d1f8b6912b3e
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PNPM
+        uses: pnpm/setup@v3.2.0
+        with:
+          install: false
+
+      - name: Download Linux executables
+        uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: shell-config-linux-*
+          merge-multiple: true
+          path: build
+
+      - name: Test Feature with the workflow executables
+        env:
+          BASE_IMAGE: ${{ matrix.image }}
+        run: |
+          node scripts/prepare-feature.ts build --test
+          pnpm dlx @devcontainers/cli@0.85.0 features test --project-folder build/devcontainer \
+            --features shell-config --base-image "$BASE_IMAGE" --skip-scenarios --skip-duplicated
+
+  stage-npm:
+    name: Stage on npm
+    needs: [build, checks, smoke-linux, smoke-windows, smoke-npm, feature-tests]
+    if: github.event_name == 'push' && github.ref_type == 'tag' && github.repository == 'AFCMS/shell-config'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      id-token: write # Exchange GitHub's OIDC token for npm staging credentials.
+    steps:
+      - name: Check release tag
+        env:
+          PACKAGE_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          if [[ "$GITHUB_REF_NAME" != "v$PACKAGE_VERSION" ]]; then
+            echo "Release tag must match package version v$PACKAGE_VERSION." >&2
+            exit 1
+          fi
+
+      - name: Setup PNPM
+        uses: pnpm/setup@v3.2.0
+        with:
+          runtime: node@^26
+          version: 12
+
+      - name: Download npm tarball
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: ${{ needs.build.outputs.tarball }}
+          path: artifacts
+
+      - name: Stage the tested tarball with trusted publishing
+        working-directory: artifacts
+        env:
+          TARBALL: ${{ needs.build.outputs.tarball }}
+          REGISTRY_TAG: ${{ needs.build.outputs.registry-tag }}
+        run: pnpm stage publish "./$TARBALL" --registry=https://registry.npmjs.org/ --access public --tag "$REGISTRY_TAG" --provenance
+
+  github-packages:
+    name: Publish to GitHub Packages
+    needs: [build, stage-npm]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write # Publish the tested npm tarball to GitHub Packages.
+    steps:
+      - name: Setup PNPM
+        uses: pnpm/setup@v3.2.0
+        with:
+          runtime: node@^26
+          version: 12
+
+      - name: Download npm tarball
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: ${{ needs.build.outputs.tarball }}
+          path: artifacts
+
+      - name: Publish the tested tarball
+        working-directory: artifacts
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+          TARBALL: ${{ needs.build.outputs.tarball }}
+          REGISTRY_TAG: ${{ needs.build.outputs.registry-tag }}
+        run: | # zizmor: ignore[use-trusted-publishing] GitHub Packages uses the repository's short-lived GITHUB_TOKEN.
+          export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/github-packages.npmrc"
+          printf '%s\n' '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
+          npm publish "./$TARBALL" --registry=https://npm.pkg.github.com/ --tag "$REGISTRY_TAG"
+
+  github-release:
+    name: Publish GitHub release
+    needs: [build, stage-npm]
+    runs-on: ubuntu-latest
+    permissions:
+      attestations: read # Verify the published release asset attestations.
+      contents: write # Create the draft, upload assets, and publish the release.
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: "{shell-config-*,afcms-shell-config-*.tgz}"
+          merge-multiple: true
+          path: artifacts
+
+      - name: Attach assets to a draft and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TARBALL: ${{ needs.build.outputs.tarball }}
+          REGISTRY_TAG: ${{ needs.build.outputs.registry-tag }}
+        shell: bash
+        run: |
+          tag="$GITHUB_REF_NAME"
+          assets=(
+            "artifacts/$TARBALL"
+            artifacts/shell-config-linux-x64
+            artifacts/shell-config-linux-arm64
+            artifacts/shell-config-win-x64.exe
+          )
+          for asset in "${assets[@]}"; do test -s "$asset"; done
+
+          if ! draft=$(gh release view "$tag" --json isDraft --jq .isDraft); then
+            flags=()
+            if [[ "$REGISTRY_TAG" == next ]]; then flags+=(--prerelease); fi
+            gh release create "$tag" --verify-tag --draft --generate-notes "${flags[@]}"
+            draft=true
+          fi
+          if [[ "$draft" == true ]]; then
+            gh release upload "$tag" "${assets[@]}" --clobber
+            gh release edit "$tag" --draft=false
+          fi
+          for asset in "${assets[@]}"; do gh release verify-asset "$tag" "$asset"; done
+
+  publish-feature:
+    name: Publish Dev Container Feature
+    needs: github-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # Publish the Dev Container Feature OCI artifact to GHCR.
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PNPM
+        uses: pnpm/setup@v3.2.0
+        with:
+          install: false
+
+      - name: Download Linux executables
+        uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: shell-config-linux-*
+          merge-multiple: true
+          path: build
+
+      - name: Publish Feature to GHCR
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: | # zizmor: ignore[use-trusted-publishing] GHCR uses the repository's short-lived GITHUB_TOKEN.
+          node scripts/prepare-feature.ts build
+          pnpm dlx @devcontainers/cli@0.85.0 features publish \
+            --registry ghcr.io --namespace afcms/shell-config build/devcontainer/src

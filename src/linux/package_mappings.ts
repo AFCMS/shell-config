@@ -1,4 +1,4 @@
-import { PackageManager } from "../system.ts";
+import type { PackageManager } from "../system.ts";
 
 export type PackageMappingValue = {
   readonly [key in PackageManager]: string | readonly string[];

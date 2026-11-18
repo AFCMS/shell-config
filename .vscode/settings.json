@@ -2,10 +2,16 @@
   "editor.detectIndentation": false,
   "editor.formatOnSave": true,
   "editor.formatOnSaveMode": "file",
-  "editor.formatOnPaste": false, // Partial formatting not supported by Deno extension
+  "editor.formatOnPaste": false,
   "editor.formatOnType": false,
+  "files.associations": {
+    "**/.github/workflows/*.{yml,yaml}": "github-actions-workflow",
+    "**/.github/workflows/actions.lock": "yaml"
+  },
+  "oxc.configPath": "oxlint.config.ts",
+  "oxc.fmt.configPath": "oxfmt.config.ts",
   "[typescript]": {
-    "editor.defaultFormatter": "denoland.vscode-deno",
+    "editor.defaultFormatter": "oxc.oxc-vscode",
     "editor.tabSize": 2
   },
   "[markdown]": {
@@ -18,7 +24,7 @@
       "strings": "off",
       "other": "off"
     },
-    "editor.defaultFormatter": "denoland.vscode-deno"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[json]": {
     "editor.quickSuggestions": {
@@ -26,7 +32,7 @@
     },
     "editor.suggest.insertMode": "replace",
     "editor.tabSize": 2,
-    "editor.defaultFormatter": "denoland.vscode-deno"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[jsonc]": {
     "editor.quickSuggestions": {
@@ -34,13 +40,29 @@
     },
     "editor.suggest.insertMode": "replace",
     "editor.tabSize": 2,
-    "editor.defaultFormatter": "denoland.vscode-deno"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.autoIndent": "keep",
+    "diffEditor.ignoreTrimWhitespace": false,
+    "editor.defaultColorDecorators": "never",
+    "editor.quickSuggestions": {
+      "strings": true,
+      "other": true,
+      "comments": false
+    },
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[github-actions-workflow]": {
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[powershell]": {
     "debug.saveBeforeStart": "nonUntitledEditorsInActiveGroup",
     "editor.semanticHighlighting.enabled": false,
     "editor.wordSeparators": "`~!@#$%^&*()=+[{]}\\|;:'\",.<>/?",
     "editor.defaultFormatter": "ms-vscode.powershell"
-  },
-  "deno.enable": true
+  }
 }

@@ -1,22 +1,22 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { runCommand } from "../command.ts";
+
 export async function runInlineScript(
   script: string,
-  env?: Record<string, string>,
+  env?: Readonly<NodeJS.ProcessEnv>,
 ): Promise<void> {
-  const tempFilePath = await Deno.makeTempFile({ suffix: ".sh" });
-  await Deno.writeTextFile(tempFilePath, script);
-
-  const commandEnv = env ? { ...Deno.env.toObject(), ...env } : undefined;
-
-  const command = new Deno.Command("sh", {
-    args: [tempFilePath],
-    stdin: "null",
-    stderr: "inherit",
-    stdout: "inherit",
-    env: commandEnv,
-  });
-  await command.spawn().output().catch((err) => {
-    console.error("Error executing script:", err);
-  });
-
-  await Deno.remove(tempFilePath);
+  const tempDir = await mkdtemp(join(tmpdir(), "shell-config-"));
+  try {
+    const scriptPath = join(tempDir, "install.sh");
+    await writeFile(scriptPath, script, "utf8");
+    const output = await runCommand("sh", [scriptPath], { env });
+    if (!output.success) {
+      throw new Error(`Script failed (${output.code ?? output.signal})`);
+    }
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 }

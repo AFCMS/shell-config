@@ -1,35 +1,23 @@
+import { opendir } from "node:fs/promises";
+
+import { runCommand } from "../command.ts";
+
 export async function updateGitRepository(path: string) {
-  const gitCommand = new Deno.Command("git", {
-    args: ["pull"],
-    cwd: path,
-    stdin: "null",
-    stderr: "inherit",
-    stdout: "inherit",
-  });
-  const output = await gitCommand.output();
+  const output = await runCommand("git", ["pull"], { cwd: path });
   return output.success;
 }
 
-export function updateGitRepositories(
-  paths: string[],
-): Promise<boolean[]> {
-  const promises = paths.map(updateGitRepository);
-  return Promise.all(promises);
+export function updateGitRepositories(paths: readonly string[]): Promise<boolean[]> {
+  return Promise.all(paths.map(updateGitRepository));
 }
 
 export async function updateGitRepositoriesInFolder(folderPath: string) {
-  for await (const dirEntry of Deno.readDir(folderPath)) {
+  for await (const dirEntry of await opendir(folderPath)) {
     console.log(dirEntry.name);
   }
 }
 
 export async function cloneGitRepository(repoUrl: string, targetPath: string) {
-  const gitCommand = new Deno.Command("git", {
-    args: ["clone", repoUrl, targetPath],
-    stdin: "null",
-    stderr: "inherit",
-    stdout: "inherit",
-  });
-  const output = await gitCommand.output();
+  const output = await runCommand("git", ["clone", repoUrl, targetPath]);
   return output.success;
 }
