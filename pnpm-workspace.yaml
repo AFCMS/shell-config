@@ -1,0 +1,16 @@
+---
+blockExoticSubdeps: true
+minimumReleaseAge: 360
+trustPolicy: no-downgrade
+
+pmOnFail: ignore
+
+trustPolicyExclude:
+  - enginematch@0.2.0
+
+permissions:
+  tsdown:
+    skills: true
+skills:
+  dirs:
+    - .agents/skills

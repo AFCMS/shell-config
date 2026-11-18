@@ -1,3 +1,4 @@
+import { runCommand } from "../../command.ts";
 import { which } from "./which.ts";
 
 export interface ExecCheckResult {
@@ -13,20 +14,18 @@ export async function checkExec(
   if (!execPath) {
     return null;
   }
-
-  const cmd = new Deno.Command(execPath, {
-    args: [versionArg],
-    stdin: "null",
-    stdout: "piped",
-  });
-
   try {
-    const output = await cmd.spawn().output();
-    const version = new TextDecoder().decode(output.stdout).split("\n")[0]
-      .trim();
+    const output = await runCommand(execPath, [versionArg], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    if (!output.success) {
+      return null;
+    }
+    const version = output.stdout.split("\n")[0].trim();
     return { version, path: execPath };
   } catch (err) {
-    if (err instanceof Deno.errors.NotFound) {
+    if (err instanceof Error && "code" in err && err.code === "ENOENT") {
       return null;
     }
     throw err;

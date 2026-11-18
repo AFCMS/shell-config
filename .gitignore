@@ -1,4 +1,5 @@
 /build/
+/dist/
 
 /.idea/
 
@@ -38,4 +39,4 @@
 .history
 .ionide
 
-# End of https://www.toptal.com/developers/gitignore/api/deno,powershell,visualstudiocode
+# End of https://www.toptal.com/developers/gitignore/api/powershell,visualstudiocode

@@ -1,0 +1,20 @@
+{
+  "id": "shell-config",
+  "version": "0.0.0",
+  "name": "AFCMS Shell Config",
+  "description": "Configure Zsh, Bash or PowerShell 7 with Starship for the Dev Container remote user.",
+  "documentationURL": "https://github.com/AFCMS/shell-config",
+  "options": {
+    "shells": {
+      "type": "string",
+      "default": "zsh",
+      "description": "Comma-separated shell targets: zsh, bash, pwsh."
+    },
+    "defaultShell": {
+      "type": "string",
+      "enum": ["", "zsh", "bash", "pwsh"],
+      "default": "",
+      "description": "Optional login shell for the remote user. It must be in the shells list."
+    }
+  }
+}

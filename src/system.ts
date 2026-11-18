@@ -6,33 +6,32 @@ export interface SystemInfoCommon {
   readonly user: string;
 }
 
-export interface SystemInfoWindows {
+interface TargetIdentity {
+  readonly uid: number;
+  readonly gid: number;
+  readonly groups: readonly number[];
+}
+
+export interface SystemInfoWindows extends SystemInfoCommon {
   readonly os: "windows";
 }
 
-export interface SystemInfoUbuntu {
+export type SystemInfoLinux = SystemInfoCommon & {
   readonly os: "linux";
-  readonly distro: "ubuntu";
-  readonly packageManager: "deb";
-  readonly versionCodename: string;
-}
-
-export interface SystemInfoFedora {
-  readonly os: "linux";
-  readonly distro: "fedora";
-  readonly packageManager: "rpm";
-  readonly versionId: number;
-}
-
-export type SystemInfo =
-  & SystemInfoCommon
-  & (
-    | SystemInfoWindows
-    | SystemInfoUbuntu
-    | SystemInfoFedora
+  readonly targetIdentity?: TargetIdentity;
+} & (
+    | {
+        readonly distro: "ubuntu" | "debian";
+        readonly packageManager: "deb";
+        readonly versionId: string;
+      }
+    | {
+        readonly distro: "fedora";
+        readonly packageManager: "rpm";
+        readonly versionId: string;
+      }
   );
 
+export type SystemInfo = SystemInfoWindows | SystemInfoLinux;
 export type SystemOs = SystemInfo["os"];
-
-export type PackageManager =
-  (SystemInfoUbuntu | SystemInfoFedora)["packageManager"];
+export type PackageManager = SystemInfoLinux["packageManager"];
