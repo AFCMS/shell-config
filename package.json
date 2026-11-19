@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "AFCMS interactive shell configuration installer",
   "keywords": [],
-  "license": "ISC",
+  "license": "MIT",
   "author": "",
   "repository": {
     "type": "git",
@@ -13,7 +13,8 @@
     "shell-config": "./dist/shell-config.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "type": "module",
   "scripts": {
