@@ -50,7 +50,7 @@ binary="$work/$asset"
 if [ -f "$feature_dir/test-binaries/$asset" ]; then
     cp "$feature_dir/test-binaries/$asset" "$binary"
 else
-    curl -fsSL --retry 3 "https://github.com/AFCMS/shell-config/releases/download/v$version/$asset" -o "$binary"
+    curl --proto "=https" --tlsv1.2 -sSf -L --retry 3 "https://github.com/AFCMS/shell-config/releases/download/v$version/$asset" -o "$binary"
 fi
 (cd "$work" && grep "  $asset\$" "$feature_dir/SHA256SUMS" | sha256sum --check --strict)
 chmod 0755 "$binary"
