@@ -202,6 +202,61 @@ jobs:
       - name: Run unattended installer
         run: node scripts/smoke.ts build/shell-config-win-x64.exe
 
+  smoke-wsl:
+    name: Installer (WSL2 Fedora 45 x64)
+    needs: build
+    runs-on: windows-2025
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      WSL_UTF8: "1"
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download Linux x64 executable
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: shell-config-linux-x64
+          path: build
+
+      - name: Install Fedora 45 on WSL2
+        run: |
+          wsl.exe --install --distribution FedoraLinux-45 --version 2 --web-download --no-launch
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          wsl.exe --list --verbose
+
+      - name: Install WSL test prerequisites
+        run: wsl.exe --distribution FedoraLinux-45 --user root --exec dnf install -y nodejs26 libatomic libstdc++
+
+      - name: Verify WSL2 detection and run unattended installer
+        run: |
+          $script = @'
+          set -euo pipefail
+          case "$(uname -r)" in
+            *[Mm]icrosoft*WSL2*) ;;
+            *) echo "Expected a WSL2 kernel" >&2; exit 1 ;;
+          esac
+          node-26 --input-type=module -e '
+          import assert from "node:assert/strict";
+          import { detectSystem } from "./src/system_detection.ts";
+          assert.partialDeepStrictEqual(await detectSystem(), {
+            os: "linux", distro: "fedora", versionId: "45", packageManager: "rpm", arch: "x86_64",
+          });
+          '
+          node-26 scripts/smoke.ts build/shell-config-linux-x64
+          '@
+          # Write LF endings so Bash can run the script from the Windows workspace.
+          [System.IO.File]::WriteAllText("build/smoke-wsl.sh", $script.Replace("`r`n", "`n"))
+          wsl.exe --distribution FedoraLinux-45 --user root --cd "$env:GITHUB_WORKSPACE" --exec bash build/smoke-wsl.sh
+          exit $LASTEXITCODE
+
   smoke-npm:
     name: Installer (npm tarball)
     needs: build
@@ -282,7 +337,7 @@ jobs:
 
   stage-npm:
     name: Stage on npm
-    needs: [build, checks, smoke-linux, smoke-windows, smoke-npm, feature-tests]
+    needs: [build, checks, smoke-linux, smoke-windows, smoke-wsl, smoke-npm, feature-tests]
     if: github.event_name == 'push' && github.ref_type == 'tag' && github.repository == 'AFCMS/shell-config'
     runs-on: ubuntu-latest
     environment: npm-publish
