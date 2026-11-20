@@ -2,13 +2,33 @@
   "name": "@afcms/shell-config",
   "version": "0.0.2",
   "description": "AFCMS interactive shell configuration installer",
-  "keywords": [],
+  "keywords": [
+    "cli",
+    "config",
+    "installer",
+    "interactive",
+    "shell"
+  ],
+  "homepage": "https://github.com/AFCMS/shell-config#readme",
+  "bugs": {
+    "url": "https://github.com/AFCMS/shell-config/issues"
+  },
   "license": "MIT",
-  "author": "",
+  "author": {
+    "name": "AFCMS",
+    "email": "afcm.contact@gmail.com",
+    "url": "https://afcms.dev"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AFCMS/shell-config.git"
   },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/AFCMS"
+    }
+  ],
   "bin": {
     "shell-config": "./dist/shell-config.mjs"
   },
@@ -16,7 +36,15 @@
     "dist",
     "skills"
   ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "type": "module",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "pnpm run build:npm && pnpm run build:sea",
     "dev": "node --import @oxc-node/core/register src/index.ts",
@@ -65,7 +93,8 @@
     }
   },
   "engines": {
-    "node": ">=26"
+    "node": ">=26",
+    "pnpm": ">=12"
   },
   "engineStrict": true
 }
