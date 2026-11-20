@@ -400,7 +400,8 @@ jobs:
         run: | # zizmor: ignore[use-trusted-publishing] GitHub Packages uses the repository's short-lived GITHUB_TOKEN.
           export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/github-packages.npmrc"
           printf '%s\n' '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
-          npm publish "./$TARBALL" --registry=https://npm.pkg.github.com/ --tag "$REGISTRY_TAG"
+          # Override the tarball's provenance default for this registry.
+          npm publish "./$TARBALL" --registry=https://npm.pkg.github.com/ --tag "$REGISTRY_TAG" --provenance=false
 
   github-release:
     name: Publish GitHub release
