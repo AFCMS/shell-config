@@ -21,7 +21,7 @@ beforeEach(async () => {
     os: "linux",
     distro: "fedora",
     packageManager: "rpm",
-    versionId: "44",
+    versionId: "45",
     arch: "x86_64",
     user: "alice",
     homeDir,

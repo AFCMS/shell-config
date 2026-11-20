@@ -48,7 +48,7 @@ test("resolves the original user and their real home when launched through sudo"
 
 test.each([
   ["debian", "13", "deb"],
-  ["fedora", "44", "rpm"],
+  ["fedora", "45", "rpm"],
 ])("detects %s and its package manager", async (distro, versionId, packageManager) => {
   vi.mocked(getOsRelease).mockResolvedValue({ ID: distro, VERSION_ID: versionId });
   expect(await detectSystem({ arch: "arm64", platform: "linux", env })).toMatchObject({
