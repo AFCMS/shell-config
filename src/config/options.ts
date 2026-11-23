@@ -10,6 +10,7 @@ const shells = z.array(z.enum(shellTargets)).min(1);
 const configSchema = z.strictObject({
   $schema: z.string().optional(),
   shells,
+  fonts: z.boolean().optional(),
 });
 
 export function renderConfigSchema(): string {

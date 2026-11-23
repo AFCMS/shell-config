@@ -7,6 +7,7 @@ import {
   installMicrosoftPowerShell,
   installWingetPackages,
 } from "./linux/utils/install_package.ts";
+import { installNerdFonts, shouldInstallNerdFonts } from "./linux/utils/nerd_fonts.ts";
 import { which } from "./linux/utils/which.ts";
 import { installBashConfig, installPowerShellConfig } from "./modules/profiles.ts";
 import { installStarship, installStarshipConfig } from "./modules/starship.ts";
@@ -16,6 +17,7 @@ import type { SystemInfo } from "./system.ts";
 export async function installShells(
   system: SystemInfo,
   shells: readonly ShellTarget[],
+  fonts = shouldInstallNerdFonts(system),
 ): Promise<void> {
   if (system.os === "linux") {
     const packages: string[] = [];
@@ -23,6 +25,11 @@ export async function installShells(
       if (shell !== "pwsh" && !(await which(shell))) packages.push(shell);
     }
     if (shells.includes("zsh") && !(await which("git"))) packages.push("git");
+    if (fonts) {
+      if (!(await which("fc-cache"))) packages.push("fontconfig");
+      if (!(await which("tar"))) packages.push("tar");
+      if (!(await which("xz"))) packages.push(system.packageManager === "deb" ? "xz-utils" : "xz");
+    }
     if (shells.includes("pwsh") && !(await which("pwsh"))) {
       await installMicrosoftPowerShell(system);
     }
@@ -35,7 +42,14 @@ export async function installShells(
       process.setgroups?.(target.groups);
       process.setgid?.(target.gid);
       process.setuid?.(target.uid);
-      for (const name of ["ZDOTDIR", "ZSH", "ZSH_CUSTOM", "STARSHIP_CONFIG", "XDG_CONFIG_HOME"]) {
+      for (const name of [
+        "ZDOTDIR",
+        "ZSH",
+        "ZSH_CUSTOM",
+        "STARSHIP_CONFIG",
+        "XDG_CONFIG_HOME",
+        "XDG_DATA_HOME",
+      ]) {
         delete process.env[name];
       }
       process.env.HOME = system.homeDir;
@@ -64,4 +78,5 @@ export async function installShells(
     if (shell === "pwsh" && powerShell) await installPowerShellConfig(powerShell.path);
   }
   await installStarshipConfig(system);
+  if (fonts) await installNerdFonts(system, powerShell?.path);
 }

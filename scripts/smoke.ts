@@ -89,7 +89,7 @@ Add-Type -TypeDefinition $source -OutputAssembly $OutputPath -OutputType Console
     ]);
     if (!result.success) throw new Error("Could not compile Windows smoke stubs");
     await copyFile(stub, join(bin, "starship.exe"));
-    await writeFile(config, '{"shells":["pwsh"]}');
+    await writeFile(config, '{"shells":["pwsh"],"fonts":false}');
   } else {
     await chmod(binary, 0o755);
     const omz = join(home, ".oh-my-zsh");
@@ -116,7 +116,7 @@ fi
     for (const command of ["apt-get", "dnf", "sudo"]) {
       await writeFile(join(bin, command), "#!/bin/sh\nexit 99\n", { mode: 0o755 });
     }
-    await writeFile(config, '{"shells":["bash","zsh","pwsh"]}');
+    await writeFile(config, '{"shells":["bash","zsh","pwsh"],"fonts":false}');
   }
 
   const npm = binary.endsWith(".mjs");

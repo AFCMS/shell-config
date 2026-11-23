@@ -12,6 +12,7 @@ import {
   type ShellTarget,
 } from "./config/options.ts";
 import { installShells } from "./installer.ts";
+import { shouldInstallNerdFonts } from "./linux/utils/nerd_fonts.ts";
 import { detectSystem } from "./system_detection.ts";
 
 const labels = {
@@ -28,6 +29,7 @@ export async function runCli(
   cli.usage("[options]");
   cli.option("--shell <shells>", "Comma-separated shell targets: zsh, bash, pwsh");
   cli.option("--config <file>", "Read options from a JSON file");
+  cli.option("--fonts", "Install Hack and FiraCode Nerd Fonts; --no-fonts skips installation");
   cli.option("--schema", "Print the JSON Schema");
   cli.help();
   cli.option("-v, --version", "Print the version");
@@ -64,6 +66,10 @@ export async function runCli(
 
     const system = await detectSystem();
     if (!system) throw new Error("Unsupported operating system or architecture.");
+    const fonts =
+      typeof options.fonts === "boolean"
+        ? options.fonts
+        : (config?.fonts ?? shouldInstallNerdFonts(system));
     const available = system.os === "windows" ? (["pwsh"] as const) : shellTargets;
     const interactive = !selected;
 
@@ -76,7 +82,7 @@ export async function runCli(
       });
       if (isCancel(choice)) return 1;
       const confirmed = await confirm({
-        message: `Apply shell configuration in ${system.homeDir}?`,
+        message: `Apply shell configuration${fonts ? " and install Nerd Fonts" : ""} in ${system.homeDir}?`,
       });
       if (isCancel(confirmed) || !confirmed) return 1;
       selected = choice;
@@ -88,7 +94,7 @@ export async function runCli(
         throw new Error(`${labels[shell]} is unavailable on ${system.os}.`);
       }
     }
-    await installShells(system, shells);
+    await installShells(system, shells, fonts);
     if (interactive) outro("Shell configuration installed.");
     return 0;
   } catch (error) {

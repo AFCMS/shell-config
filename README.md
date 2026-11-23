@@ -14,6 +14,11 @@ for the selected distribution and architecture, install a working `pwsh` before 
 installer. A working Starship on `PATH` is reused. Otherwise, the installer verifies the archive
 from the official Starship release and installs it in `~/.local/bin`.
 
+Hack and FiraCode Nerd Fonts are installed automatically on Windows and on Linux sessions
+with `DISPLAY` or `WAYLAND_DISPLAY` set. Headless Linux runs skip fonts. Font archives come
+from Nerd Fonts v3.4.0 and are verified with pinned SHA-256 checksums. Select **Hack Nerd Font
+Mono** or **FiraCode Nerd Font Mono** in your terminal settings after installation.
+
 ## Run the installer
 
 Install from npm with Node.js 26 or newer.
@@ -37,6 +42,8 @@ permissions for shell config and plugin writes.
 
 ```shell
 ./shell-config-linux-x64 --shell zsh,bash
+./shell-config-linux-x64 --shell zsh --fonts
+./shell-config-linux-x64 --shell bash --no-fonts
 ```
 
 ```powershell
@@ -49,13 +56,24 @@ Save this as `shell-config.json`.
 
 ```json
 {
-  "shells": ["zsh", "bash"]
+  "shells": ["zsh", "bash"],
+  "fonts": false
 }
 ```
 
 `--shell` and `--config` run unattended. With both options present, `--shell` overrides the
 file's shell selection. Run `shell-config --schema` to print the JSON Schema, or use
 `dist/shell-config.schema.json` from the npm package.
+
+The optional `fonts` boolean overrides automatic font selection. `--fonts` and `--no-fonts`
+override the JSON option. Linux fonts go in `$XDG_DATA_HOME/fonts/shell-config` when
+`XDG_DATA_HOME` is absolute, otherwise in `~/.local/share/fonts/shell-config`. Missing
+`fontconfig`, `tar`, and XZ tools are installed with the system package manager. Windows fonts
+are installed under `%LOCALAPPDATA%\Microsoft\Windows\Fonts\shell-config` and registered for
+the current user. Repeated runs reuse complete installations of the pinned release.
+
+When using a remote terminal, also install a Nerd Font on the computer running the terminal
+application.
 
 ### Configuration files
 
