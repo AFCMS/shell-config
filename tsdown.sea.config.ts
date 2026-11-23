@@ -21,7 +21,7 @@ export default defineConfig({
   deps: { alwaysBundle: [/.*/], onlyBundle: false },
   outDir: "build/sea-js",
   exe: {
-    seaConfig: { useCodeCache: false, useSnapshot: false, assets },
+    seaConfig: { useCodeCache: false, useSnapshot: false, assets, execArgv: ["--use-system-ca"] },
     outDir: "build/sea",
     fileName: "shell-config",
     targets: [
