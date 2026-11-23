@@ -3,6 +3,7 @@ name: shell-config
 description: Use the AFCMS shell-config CLI to set up Zsh with Oh My Zsh, Bash, or PowerShell 7 with Starship.
 disable-model-invocation: true
 license: MIT
+compatibility: Only works on Linux, Windows and WSL.
 ---
 
 # Shell Config
