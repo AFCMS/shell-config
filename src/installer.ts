@@ -1,5 +1,6 @@
 import { join, delimiter } from "node:path";
 
+import { configureApps } from "./apps/configure.ts";
 import type { ShellTarget } from "./config/options.ts";
 import { checkExec } from "./linux/utils/check_exec.ts";
 import {
@@ -78,5 +79,8 @@ export async function installShells(
     if (shell === "pwsh" && powerShell) await installPowerShellConfig(powerShell.path);
   }
   await installStarshipConfig(system);
-  if (fonts) await installNerdFonts(system, powerShell?.path);
+  if (fonts) {
+    const installedFonts = await installNerdFonts(system, powerShell?.path);
+    await configureApps({ system, fonts: installedFonts });
+  }
 }

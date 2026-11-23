@@ -60,7 +60,10 @@ test("defaults to fonts on desktops and skips headless Linux", () => {
 });
 
 test("installs verified releases with licenses and refreshes the user's font cache", async () => {
-  await installNerdFonts(system);
+  expect(await installNerdFonts(system)).toEqual({
+    terminal: "Hack Nerd Font Mono",
+    editor: "FiraCode Nerd Font Mono",
+  });
   expect(download).toHaveBeenCalledTimes(2);
   expect(download).toHaveBeenCalledWith(
     `https://github.com/ryanoasis/nerd-fonts/releases/download/${nerdFontsRelease}/Hack.tar.xz`,

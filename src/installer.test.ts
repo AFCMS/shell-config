@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
+import { configureApps } from "./apps/configure.ts";
 import { installShells } from "./installer.ts";
 import { checkExec } from "./linux/utils/check_exec.ts";
 import {
@@ -18,6 +19,7 @@ import { installStarship, installStarshipConfig } from "./modules/starship.ts";
 import { installZshConfig } from "./modules/zsh.ts";
 import type { SystemInfoLinux } from "./system.ts";
 
+vi.mock("./apps/configure.ts", () => ({ configureApps: vi.fn<typeof configureApps>() }));
 vi.mock("./linux/utils/check_exec.ts", () => ({ checkExec: vi.fn<typeof checkExec>() }));
 vi.mock("./linux/utils/install_package.ts", () => ({
   installLinuxPackages: vi.fn<typeof installLinuxPackages>(),
@@ -41,6 +43,10 @@ vi.mock("./modules/zsh.ts", () => ({ installZshConfig: vi.fn<typeof installZshCo
 
 let homeDir: string;
 let system: SystemInfoLinux;
+const fontFamilies = {
+  terminal: "Hack Nerd Font Mono",
+  editor: "FiraCode Nerd Font Mono",
+} as const;
 beforeEach(async () => {
   vi.resetAllMocks();
   homeDir = await mkdtemp(join(tmpdir(), "shell-config-installer-test-"));
@@ -57,6 +63,7 @@ beforeEach(async () => {
   vi.stubEnv("WAYLAND_DISPLAY", undefined);
   vi.mocked(which).mockImplementation(async (command) => join(homeDir, command));
   vi.mocked(checkExec).mockResolvedValue({ path: join(homeDir, "pwsh"), version: "7" });
+  vi.mocked(installNerdFonts).mockResolvedValue(fontFamilies);
 });
 afterEach(async () => {
   vi.unstubAllEnvs();
@@ -66,6 +73,7 @@ afterEach(async () => {
 test("skips fonts and their dependencies on headless Linux", async () => {
   await installShells(system, ["bash"]);
   expect(installNerdFonts).not.toHaveBeenCalled();
+  expect(configureApps).not.toHaveBeenCalled();
   expect(installLinuxPackages).toHaveBeenCalledExactlyOnceWith(system, []);
 });
 
@@ -91,6 +99,10 @@ test.each(["deb", "rpm"] as const)(
       packageManager === "deb" ? "xz-utils" : "xz",
     ]);
     expect(installNerdFonts).toHaveBeenCalledExactlyOnceWith(linux, undefined);
+    expect(configureApps).toHaveBeenCalledExactlyOnceWith({ system: linux, fonts: fontFamilies });
+    expect(vi.mocked(installNerdFonts).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(configureApps).mock.invocationCallOrder[0],
+    );
   },
 );
 
@@ -98,6 +110,7 @@ test("allows font installation to be disabled on a Linux desktop", async () => {
   vi.stubEnv("WAYLAND_DISPLAY", "wayland-0");
   await installShells(system, ["bash"], false);
   expect(installNerdFonts).not.toHaveBeenCalled();
+  expect(configureApps).not.toHaveBeenCalled();
   expect(installLinuxPackages).toHaveBeenCalledExactlyOnceWith(system, []);
   await installShells(system, ["bash"]);
   expect(installNerdFonts).toHaveBeenCalledExactlyOnceWith(system, undefined);
@@ -107,5 +120,14 @@ test("registers Windows fonts with the detected PowerShell executable", async ()
   const windows = { ...system, os: "windows" } as const;
   await installShells(windows, ["pwsh"]);
   expect(installNerdFonts).toHaveBeenCalledExactlyOnceWith(windows, join(homeDir, "pwsh"));
+  expect(configureApps).toHaveBeenCalledExactlyOnceWith({ system: windows, fonts: fontFamilies });
   expect(installWingetPackages).not.toHaveBeenCalled();
+});
+
+test("does not configure apps when font installation or registration fails", async () => {
+  vi.mocked(installNerdFonts).mockRejectedValue(new Error("Could not register Nerd Fonts"));
+  await expect(installShells(system, ["bash"], true)).rejects.toThrow(
+    "Could not register Nerd Fonts",
+  );
+  expect(configureApps).not.toHaveBeenCalled();
 });

@@ -10,6 +10,11 @@ import type { SystemInfo } from "../../system.ts";
  */
 export const nerdFontsRelease = "v3.4.0";
 
+const fontFamilies = {
+  terminal: "Hack Nerd Font Mono",
+  editor: "FiraCode Nerd Font Mono",
+} as const;
+
 const fonts = {
   Hack: {
     linux: "1d00a1435638084174516975840854368a45ac30bb0bad2c0c49db713b5925f0",
@@ -78,7 +83,10 @@ Get-ChildItem -LiteralPath $env:SHELL_CONFIG_FONT_DIR -Recurse -File |
 [ShellConfigFonts]::SendNotifyMessage([IntPtr]0xffff, 0x001d, [UIntPtr]::Zero, [IntPtr]::Zero) | Out-Null
 `;
 
-export async function installNerdFonts(system: SystemInfo, powerShell?: string): Promise<void> {
+export async function installNerdFonts(
+  system: SystemInfo,
+  powerShell?: string,
+): Promise<typeof fontFamilies> {
   if (system.os === "windows" && !powerShell) {
     throw new Error("PowerShell 7 is required to register Nerd Fonts on Windows.");
   }
@@ -139,7 +147,6 @@ export async function installNerdFonts(system: SystemInfo, powerShell?: string):
           { env: { SHELL_CONFIG_FONT_DIR: fontRoot } },
         );
   if (!result.success) throw new Error("Could not register Nerd Fonts for the current user.");
-  console.log(
-    "Nerd Fonts installed. Select Hack Nerd Font Mono or FiraCode Nerd Font Mono in your terminal settings.",
-  );
+  console.log("Nerd Fonts installed and registered for the current user.");
+  return fontFamilies;
 }

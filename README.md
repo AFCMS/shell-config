@@ -16,8 +16,9 @@ from the official Starship release and installs it in `~/.local/bin`.
 
 Hack and FiraCode Nerd Fonts are installed automatically on Windows and on Linux sessions
 with `DISPLAY` or `WAYLAND_DISPLAY` set. Headless Linux runs skip fonts. Font archives come
-from Nerd Fonts v3.4.0 and are verified with pinned SHA-256 checksums. Select **Hack Nerd Font
-Mono** or **FiraCode Nerd Font Mono** in your terminal settings after installation.
+from Nerd Fonts v3.4.0 and are verified with pinned SHA-256 checksums. After successful font
+registration, the installer configures detected VS Code and VS Code Insiders user settings.
+For other terminals, select **Hack Nerd Font Mono** or **FiraCode Nerd Font Mono** manually.
 
 ## Run the installer
 
@@ -74,6 +75,27 @@ the current user. Repeated runs reuse complete installations of the pinned relea
 
 When using a remote terminal, also install a Nerd Font on the computer running the terminal
 application.
+
+### App settings
+
+After installing fonts, the installer looks for existing `Code/User` and `Code - Insiders/User`
+directories under `$XDG_CONFIG_HOME` (or `~/.config`) on Linux and `%APPDATA%` (or
+`~/AppData/Roaming`) on Windows. It creates a missing `settings.json` in those directories,
+uses **Hack Nerd Font Mono** for the integrated terminal and **FiraCode Nerd Font Mono** for
+the editor, sets the terminal minimum contrast ratio to `1`, enables images, and turns GPU
+acceleration on. Restart VS Code to load newly installed fonts.
+
+JSONC comments, unrelated settings, indentation and line endings are preserved. The first
+previous settings file is saved beside it with a `.bak` suffix. Malformed settings are left
+unchanged and reported as an error. Runs that skip font installation leave app settings alone.
+Only the local default user settings are configured; remote server settings and named profiles
+are left alone.
+
+App support lives in [`src/apps/`](src/apps/). To add an app such as Windows Terminal or
+Ptyxis, implement an `AppConfigurator` from [`types.ts`](src/apps/types.ts) and register it in
+[`configure.ts`](src/apps/configure.ts). Each app owns detection, supported platforms and its
+settings format; it receives the target account and the installed font families. JSONC apps
+can reuse [`updateJsoncConfig`](src/config/jsonc.ts).
 
 ### Configuration files
 
