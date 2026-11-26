@@ -1,7 +1,12 @@
 import { isAbsolute, join } from "node:path";
 
 import { readConfigAsset } from "../config/assets.ts";
-import { hasStarshipInit, readConfigFile, readStartupBlock } from "../config/files.ts";
+import {
+  hasStarshipInit,
+  hasUncommentedLine,
+  readConfigFile,
+  readStartupBlock,
+} from "../config/files.ts";
 import { cloneGitRepository } from "../linux/git.ts";
 import { checkOmzInstalled, installPlugins } from "../linux/omz/omz.ts";
 import { omzPlugins } from "../linux/omz/omz_plugins.ts";
@@ -12,7 +17,7 @@ export async function installZshConfig(system: SystemInfoLinux): Promise<void> {
   const zdotdir = process.env.ZDOTDIR;
   const path = join(zdotdir && isAbsolute(zdotdir) ? zdotdir : system.homeDir, ".zshrc");
   const profile = readStartupBlock(await readConfigFile(path), await readConfigAsset("zsh"));
-  const customOmz = /^(?![ \t]*#)[^\r\n]*?\boh-my-zsh\.sh\b/m.test(profile.custom);
+  const customOmz = hasUncommentedLine(profile.custom, /\boh-my-zsh\.sh\b/);
 
   const omz = await checkOmzInstalled(system.homeDir, profile.custom);
   if (!omz && !customOmz) {

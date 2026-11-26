@@ -4,18 +4,25 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
+import { runCommand } from "../command.ts";
 import { readConfigAsset } from "../config/assets.ts";
 import { endMarker, startMarker } from "../config/files.ts";
 import { omzPlugins } from "../linux/omz/omz_plugins.ts";
 import type { SystemInfoLinux } from "../system.ts";
-import { installBashConfig } from "./profiles.ts";
+import { installBashConfig, installPowerShellConfig } from "./profiles.ts";
 import { installStarshipConfig } from "./starship.ts";
 import { installZshConfig } from "./zsh.ts";
+
+vi.mock("../command.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../command.ts")>()),
+  runCommand: vi.fn<typeof runCommand>(),
+}));
 
 let homeDir: string;
 let system: SystemInfoLinux;
 
 beforeEach(async () => {
+  vi.resetAllMocks();
   homeDir = await mkdtemp(join(tmpdir(), "shell-config-config-test-"));
   system = {
     os: "linux",
@@ -77,6 +84,25 @@ test("migrates an exact legacy Zsh profile and avoids duplicate initialization",
   expect((await readFile(path, "utf8")).match(/oh-my-zsh\.sh/g)).toHaveLength(1);
 });
 
+test.each([false, true])("detects active Oh My Zsh initialization (custom: %s)", async (custom) => {
+  const omz = join(homeDir, ".oh-my-zsh");
+  for (const { name } of omzPlugins) {
+    await mkdir(join(omz, "custom", "plugins", name), { recursive: true });
+  }
+  await writeFile(join(omz, "oh-my-zsh.sh"), "");
+  const path = join(homeDir, ".zshrc");
+  const text =
+    " ".repeat(100_000) +
+    '\r\n\t# source "$ZSH/oh-my-zsh.sh"\r\n' +
+    (custom ? 'source "$ZSH/oh-my-zsh.sh"\r\n' : "");
+  await writeFile(path, text);
+  await installZshConfig(system);
+  const profile = await readFile(path, "utf8");
+  expect(profile).toContain(text);
+  const block = profile.slice(profile.indexOf(startMarker));
+  expect(block.includes('source "$ZSH/oh-my-zsh.sh"')).toBe(!custom);
+});
+
 test("backs up the original Starship config once before replacing it", async () => {
   const dir = join(homeDir, ".config");
   const path = join(dir, "starship.toml");
@@ -89,3 +115,29 @@ test("backs up the original Starship config once before replacing it", async () 
   expect(await readFile(path + ".bak", "utf8")).toBe("old Starship config");
   expect(await readFile(path, "utf8")).toBe(await readConfigAsset("starship"));
 });
+
+test("generates a PowerShell profile that sources the full Starship script", async () => {
+  const path = join(homeDir, "Microsoft.PowerShell_profile.ps1");
+  vi.mocked(runCommand).mockResolvedValue({
+    success: true,
+    code: 0,
+    signal: null,
+    stdout: path,
+    stderr: "",
+  });
+  await installPowerShellConfig("pwsh");
+  const first = await readFile(path, "utf8");
+  expect(first).not.toContain("Invoke-Expression");
+  expect(first).toContain("starship init powershell --print-full-init");
+  await installPowerShellConfig("pwsh");
+  expect(await readFile(path, "utf8")).toBe(first);
+});
+
+test.each(["Microsoft.PowerShell_profile.ps1", "Microsoft.PowerShell_profile_linux.ps1"])(
+  "%s sources the full Starship initialization without Invoke-Expression",
+  async (name) => {
+    const text = await readFile(new URL(`../config/powershell/${name}`, import.meta.url), "utf8");
+    expect(text).not.toContain("Invoke-Expression");
+    expect(text).toContain("starship init powershell --print-full-init");
+  },
+);

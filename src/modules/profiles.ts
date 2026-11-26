@@ -37,7 +37,7 @@ export async function installPowerShellConfig(executable: string): Promise<void>
   if (!existingInit) {
     lines.push(
       "if (Get-Command starship -ErrorAction SilentlyContinue) {",
-      "    Invoke-Expression (&starship init powershell)",
+      "    . ([scriptblock]::Create((starship init powershell --print-full-init | Out-String)))",
       "}",
     );
   }

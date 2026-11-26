@@ -110,6 +110,12 @@ export function readStartupBlock(file: ConfigFile, legacy?: string) {
   };
 }
 
+export function hasUncommentedLine(text: string, pattern: RegExp): boolean {
+  return text
+    .split(/\r\n?|\n/)
+    .some((line) => !line.trimStart().startsWith("#") && pattern.test(line));
+}
+
 export function hasStarshipInit(text: string): boolean {
-  return /^(?![ \t]*#)[^\r\n]*?\bstarship(?:\.exe)?["']?\s+init\s/m.test(text);
+  return hasUncommentedLine(text, /\bstarship(?:\.exe)?["']?\s+init\s/);
 }
