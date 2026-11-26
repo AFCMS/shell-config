@@ -88,9 +88,10 @@ esac
       { mode: 0o755 },
     );
     await writeFile(join(bin, "sleep"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    await writeFile(join(dir, "release.sh"), script);
     const result = await runCommand(
       "bash",
-      ["--noprofile", "--norc", "-e", "-o", "pipefail", "-c", script],
+      ["--noprofile", "--norc", "-e", "-o", "pipefail", "release.sh"],
       {
         cwd: dir,
         env: {
