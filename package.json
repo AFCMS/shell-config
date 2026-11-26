@@ -1,6 +1,6 @@
 {
   "name": "@afcms/shell-config",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "AFCMS interactive shell configuration installer",
   "keywords": [
     "cli",
